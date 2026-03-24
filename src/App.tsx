@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Upload, Loader2 } from 'lucide-react'
 import { useStore } from './store'
 import type { GraphData } from './types'
 import NarrativeDashboard from './components/NarrativeDashboard'
+import StoryDashboard from './components/StoryDashboard'
 
 export default function App() {
   const setGraphData = useStore((s) => s.setGraphData)
@@ -11,6 +12,7 @@ export default function App() {
   const isLoadingGraph = useStore((s) => s.isLoadingGraph)
   const error = useStore((s) => s.error)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [page, setPage] = useState<'arc' | 'story'>('arc')
 
   useEffect(() => {
     fetchGraph()
@@ -76,7 +78,9 @@ export default function App() {
 
       {/* Main content */}
       {graphData ? (
-        <NarrativeDashboard />
+        page === 'story'
+          ? <StoryDashboard onBack={() => setPage('arc')} />
+          : <NarrativeDashboard onDevelopStory={() => setPage('story')} />
       ) : (
         <div className="flex flex-col items-center justify-center flex-1 gap-2 text-gray-600">
           {isLoadingGraph

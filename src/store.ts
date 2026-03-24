@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { GraphData, ArcBeat, ActKey, GenerateArcResponse } from './types'
+import { mockGraphData, mockArcResponse } from './mocks/mockData'
 
 const API_BASE = 'http://127.0.0.1:8000'
 
@@ -43,8 +44,9 @@ export const useStore = create<AppState>((set, get) => ({
       }
       const data = (await res.json()) as GraphData
       set({ graphData: data })
-    } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'Failed to load graph.' })
+    } catch {
+      // Backend unavailable — load mock data so the app works offline
+      set({ graphData: mockGraphData })
     } finally {
       set({ isLoadingGraph: false })
     }
@@ -66,18 +68,23 @@ export const useStore = create<AppState>((set, get) => ({
     set({ isGenerating: true, error: null })
 
     try {
-      const res = await fetch(`${API_BASE}/graph/generate-arc`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locked_acts }),
-      })
+      let payload: GenerateArcResponse
 
-      if (!res.ok) {
-        const message = await res.text()
-        throw new Error(`Server error ${res.status}: ${message}`)
+      try {
+        const res = await fetch(`${API_BASE}/graph/generate-arc`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locked_acts }),
+        })
+        if (!res.ok) {
+          const message = await res.text()
+          throw new Error(`Server error ${res.status}: ${message}`)
+        }
+        payload = (await res.json()) as GenerateArcResponse
+      } catch {
+        // Backend unavailable — use mock arc
+        payload = mockArcResponse
       }
-
-      const payload = (await res.json()) as GenerateArcResponse
 
       set((state) => {
         const updated = { ...state.beats }
