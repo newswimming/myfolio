@@ -98,7 +98,9 @@ export default function NarrativeDashboard() {
 
               {/* Cluster badge */}
               <span className="self-start text-xs text-gray-600 bg-gray-800 rounded-full px-2 py-0.5">
-                cluster {beat.clusterId}
+                {beat.clusterIds.length > 0
+                  ? `clusters ${beat.clusterIds.join(', ')}`
+                  : 'no clusters'}
               </span>
             </div>
           )

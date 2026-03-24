@@ -21,5 +21,13 @@ export interface ArcBeat {
   act: ActKey
   text: string
   isLocked: boolean
-  clusterId: number
+  clusterIds: number[]
+}
+
+export interface GenerateArcResponse {
+  ki: string
+  sho: string
+  ten: string
+  ketsu: string
+  clusters_used: Record<string, number[]>
 }
