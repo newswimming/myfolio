@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import type { GraphData, ArcBeat, ActKey, GenerateArcResponse } from './types'
+import type { GraphData, ArcBeat, ActKey, GenerateArcResponse, ThemeResult, BiasResult } from './types'
 import { mockGraphData, mockArcResponse } from './mocks/mockData'
+import { fetchThemes, fetchBiasScore } from './services/trendBiasApi'
 
 const API_BASE = 'http://127.0.0.1:8000'
 
@@ -12,10 +13,15 @@ interface AppState {
   isGenerating: boolean
   isLoadingGraph: boolean
   error: string | null
+  themes: ThemeResult[]
+  biasResult: BiasResult | null
+  isAnalyzing: boolean
+  analysisError: string | null
   setGraphData: (data: GraphData) => void
   toggleBeatLock: (act: ActKey) => void
   fetchGraph: () => Promise<void>
   generateArc: () => Promise<void>
+  analyzeArc: () => Promise<void>
 }
 
 const initialBeats: Record<ActKey, ArcBeat> = Object.fromEntries(
@@ -31,6 +37,10 @@ export const useStore = create<AppState>((set, get) => ({
   isGenerating: false,
   isLoadingGraph: false,
   error: null,
+  themes: [],
+  biasResult: null,
+  isAnalyzing: false,
+  analysisError: null,
 
   setGraphData: (data) => set({ graphData: data }),
 
@@ -59,6 +69,25 @@ export const useStore = create<AppState>((set, get) => ({
         [act]: { ...state.beats[act], isLocked: !state.beats[act].isLocked },
       },
     })),
+
+  analyzeArc: async () => {
+    const { beats } = get()
+    const text = [beats.ki.text, beats.sho.text, beats.ten.text, beats.ketsu.text]
+      .join('\n\n')
+
+    set({ isAnalyzing: true, analysisError: null })
+    try {
+      const [themes, biasResult] = await Promise.all([
+        fetchThemes(text, 30),
+        fetchBiasScore(text),
+      ])
+      set({ themes, biasResult })
+    } catch (e) {
+      set({ analysisError: e instanceof Error ? e.message : 'Analysis failed.' })
+    } finally {
+      set({ isAnalyzing: false })
+    }
+  },
 
   generateArc: async () => {
     const { beats } = get()

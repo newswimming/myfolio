@@ -3,4 +3,13 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      '/trend-bias': {
+        target: 'https://script-trend-bias-analyzer.onrender.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/trend-bias/, ''),
+      },
+    },
+  },
 })

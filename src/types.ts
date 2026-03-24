@@ -31,3 +31,31 @@ export interface GenerateArcResponse {
   ketsu: string
   clusters_used: Record<string, number[]>
 }
+
+export interface ThemeResult {
+  theme: string
+  relevance_blurb: string
+  published_date: string
+  source_type: string
+  source_title: string
+  source_url: string
+  evidence_note: string
+}
+
+export interface BiasSubdimension {
+  score: number
+  evidence: string[]
+}
+
+export interface BiasResult {
+  overall_bias_score: number
+  bias_1: {
+    agency_gap: BiasSubdimension
+    gaze_objectification: BiasSubdimension
+    affection_asymmetry: BiasSubdimension
+  }
+  bias_2: {
+    linguistic_stereotyping: BiasSubdimension
+    dialogue_power_imbalance: BiasSubdimension
+  }
+}
