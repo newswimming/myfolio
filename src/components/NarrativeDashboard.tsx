@@ -58,22 +58,7 @@ export default function NarrativeDashboard({ onDevelopStory }: Props) {
       }
     }
 
-    // Derive a title from the most frequent tag in each cluster
-    const groups = new Map(
-      Array.from(nodesByCid.entries()).map(([cid, nodes]) => {
-        const freq: Record<string, number> = {}
-        for (const node of nodes) {
-          for (const tag of node.tags ?? []) {
-            freq[tag] = (freq[tag] ?? 0) + 1
-          }
-        }
-        const topTag = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0]
-        const title = topTag
-          ? topTag.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-          : `Cluster ${cid}`
-        return [cid, { nodes, title }] as const
-      })
-    )
+    const groups = nodesByCid
 
     return { act: selectedAct, groups }
   }, [selectedAct, graphData, beats])
@@ -233,15 +218,12 @@ export default function NarrativeDashboard({ onDevelopStory }: Props) {
 
           {/* Clusters */}
           <div className="flex flex-col gap-6">
-            {Array.from(clusterPanelData.groups.entries()).map(([cid, { nodes, title }]) => (
+            {Array.from(clusterPanelData.groups.entries()).map(([cid, nodes]) => (
               <div key={cid} className="flex flex-col gap-3">
                 <div className="flex items-baseline gap-3">
-                  <h4 className="text-base font-bold text-white">
-                    {title}
-                  </h4>
-                  <span className="text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-indigo-400">
                     Cluster {cid}
-                  </span>
+                  </h4>
                   <span className="text-xs text-gray-600">
                     {nodes.length} note{nodes.length !== 1 ? 's' : ''}
                   </span>
