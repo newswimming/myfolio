@@ -43,20 +43,38 @@ export default function NarrativeDashboard({ onDevelopStory }: Props) {
     setSelectedAct((prev) => (prev === act ? null : act))
   }
 
-  // Build cluster → nodes map for the selected act
+  // Build cluster → nodes map for the selected act, with a derived title per cluster
   const clusterPanelData = useMemo(() => {
     if (!selectedAct || !graphData) return null
     const clusterIds = beats[selectedAct].clusterIds
     if (clusterIds.length === 0) return null
 
     const idSet = new Set(clusterIds)
-    const groups = new Map<number, typeof graphData.nodes>()
-    for (const cid of clusterIds) groups.set(cid, [])
+    const nodesByCid = new Map<number, typeof graphData.nodes>()
+    for (const cid of clusterIds) nodesByCid.set(cid, [])
     for (const node of graphData.nodes) {
       if (idSet.has(node.macro_id)) {
-        groups.get(node.macro_id)?.push(node)
+        nodesByCid.get(node.macro_id)?.push(node)
       }
     }
+
+    // Derive a title from the most frequent tag in each cluster
+    const groups = new Map(
+      Array.from(nodesByCid.entries()).map(([cid, nodes]) => {
+        const freq: Record<string, number> = {}
+        for (const node of nodes) {
+          for (const tag of node.tags ?? []) {
+            freq[tag] = (freq[tag] ?? 0) + 1
+          }
+        }
+        const topTag = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0]
+        const title = topTag
+          ? topTag.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+          : `Cluster ${cid}`
+        return [cid, { nodes, title }] as const
+      })
+    )
+
     return { act: selectedAct, groups }
   }, [selectedAct, graphData, beats])
 
@@ -215,14 +233,19 @@ export default function NarrativeDashboard({ onDevelopStory }: Props) {
 
           {/* Clusters */}
           <div className="flex flex-col gap-6">
-            {Array.from(clusterPanelData.groups.entries()).map(([cid, nodes]) => (
+            {Array.from(clusterPanelData.groups.entries()).map(([cid, { nodes, title }]) => (
               <div key={cid} className="flex flex-col gap-3">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-indigo-400">
-                  Cluster {cid}
-                  <span className="ml-2 text-gray-600 font-normal normal-case tracking-normal">
+                <div className="flex items-baseline gap-3">
+                  <h4 className="text-base font-bold text-white">
+                    {title}
+                  </h4>
+                  <span className="text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                    Cluster {cid}
+                  </span>
+                  <span className="text-xs text-gray-600">
                     {nodes.length} note{nodes.length !== 1 ? 's' : ''}
                   </span>
-                </h4>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {nodes.map((node) => (
