@@ -2,6 +2,12 @@ import type { ThemeResult, BiasResult } from '../types'
 
 const TREND_BIAS_BASE = '/trend-bias'
 
+export async function fetchNote(noteId: string): Promise<string> {
+  const res = await fetch(`/notes/${encodeURIComponent(noteId)}`)
+  if (!res.ok) throw new Error(`Note not found: ${noteId}`)
+  return res.text()
+}
+
 export async function fetchThemes(notes: string, daysBack: 30 | 50 | 100): Promise<ThemeResult[]> {
   const res = await fetch(`${TREND_BIAS_BASE}/themes-and-trends`, {
     method: 'POST',

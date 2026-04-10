@@ -1,13 +1,27 @@
 export interface GraphNode {
   id: string
+  display_name?: string
   tags: string[]
   macro_id: number
+  character_community_id?: number
+  constraint?: number
   content: string
+  is_character_node?: boolean
+  is_narrative_pivot?: boolean
+  character_role?: 'locus' | 'symbiote' | 'mirror' | 'dominant' | 'neutral'
+  power_role?: string
+  attention_score?: number
+  agency_score?: number
+  dialogue_weight?: number
 }
 
 export interface GraphLink {
   source: string
   target: string
+  relation_type?: string
+  narrative_act?: string
+  confidence?: number
+  provenance?: string
 }
 
 export interface GraphData {
@@ -22,6 +36,7 @@ export interface ArcBeat {
   text: string
   isLocked: boolean
   clusterIds: number[]
+  characterNames: string[]
 }
 
 export interface GenerateArcResponse {
@@ -30,6 +45,7 @@ export interface GenerateArcResponse {
   ten: string
   ketsu: string
   clusters_used: Record<string, number[]>
+  characters_per_act?: Record<string, string[]>
 }
 
 export interface ThemeResult {
@@ -59,3 +75,4 @@ export interface BiasResult {
     dialogue_power_imbalance: BiasSubdimension
   }
 }
+

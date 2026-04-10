@@ -1,19 +1,56 @@
 import type { GraphData, GenerateArcResponse } from '../types'
 
 // ---------------------------------------------------------------------------
-// Mock graph — 20 notes across 4 thematic clusters (macro_id 0–3)
+// Mock graph — 20 notes + 3 character nodes across 4 thematic clusters
 // Cluster 0: Identity & origins
 // Cluster 1: Creative practice
 // Cluster 2: Constraints & failures
 // Cluster 3: Emergence & resolution
+//
+// Character nodes (is_character_node: true):
+//   ki-woo      — locus,    community 0 (Ki)
+//   chung-sook  — mirror,   community 0 (Ki)
+//   dong-ik     — dominant, community 1 (Sho)
 // ---------------------------------------------------------------------------
 export const mockGraphData: GraphData = {
   nodes: [
+    // ── Character nodes ─────────────────────────────────────────────────────
+    {
+      id: 'ki-woo',
+      display_name: 'Ki-woo',
+      macro_id: 0,
+      character_community_id: 0,
+      is_character_node: true,
+      character_role: 'locus',
+      tags: ['aspect/character/ki-woo', 'affect/mu', 'code/ki-2'],
+      content: 'Ki-woo is a character introduced in SCENE_003. Relations: ROMANTIC with chung-sook. Interactions: dong-ik (neutral, submissive)',
+    },
+    {
+      id: 'chung-sook',
+      display_name: 'Chung-sook',
+      macro_id: 0,
+      character_community_id: 0,
+      is_character_node: true,
+      character_role: 'mirror',
+      tags: ['aspect/character/chung-sook', 'affect/positive', 'code/ki-2'],
+      content: 'Chung-sook is a character introduced in SCENE_005. Relations: FRIEND with ki-woo. Interactions: ki-woo (positive, peer)',
+    },
+    {
+      id: 'dong-ik',
+      display_name: 'Dong-ik',
+      macro_id: 1,
+      character_community_id: 1,
+      is_character_node: true,
+      character_role: 'dominant',
+      tags: ['aspect/character/dong-ik', 'affect/negative', 'code/sho-5'],
+      content: 'Dong-ik is a character introduced in SCENE_023. Relations: BOSS_OF with ki-woo. Interactions: ki-woo (neutral, dominant)',
+    },
+
     // Cluster 0 — Identity & origins
     {
       id: 'note-001',
       macro_id: 0,
-      tags: ['identity', 'origins'],
+      tags: ['identity', 'origins', 'aspect/character/ki-woo'],
       content:
         'Growing up between two cities left me with a fragmented sense of place. Neither fully belonged to me, yet both shaped how I see the world.',
     },
@@ -159,6 +196,14 @@ export const mockGraphData: GraphData = {
   ],
 
   links: [
+    // Character → character relations
+    { source: 'ki-woo',     target: 'dong-ik',    relation_type: 'hinders',   narrative_act: 'sho', confidence: 0.85 },
+    { source: 'chung-sook', target: 'ki-woo',     relation_type: 'supports',  narrative_act: 'ki',  confidence: 0.90 },
+    { source: 'dong-ik',    target: 'ki-woo',     relation_type: 'motivates', narrative_act: 'ten', confidence: 0.78 },
+    // Vault note → character (cross-reference edges)
+    { source: 'note-001',   target: 'ki-woo',     relation_type: 'related',   narrative_act: 'ki',  confidence: 0.70 },
+    { source: 'note-006',   target: 'dong-ik',    relation_type: 'related',   narrative_act: 'sho', confidence: 0.70 },
+    // Note → note
     { source: 'note-001', target: 'note-002' },
     { source: 'note-002', target: 'note-004' },
     { source: 'note-003', target: 'note-001' },
@@ -195,5 +240,11 @@ export const mockArcResponse: GenerateArcResponse = {
     sho:   [1],
     ten:   [2],
     ketsu: [3],
+  },
+  characters_per_act: {
+    ki:    ['ki-woo', 'chung-sook'],
+    sho:   ['dong-ik'],
+    ten:   ['ki-woo'],
+    ketsu: [],
   },
 }

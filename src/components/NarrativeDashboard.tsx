@@ -1,8 +1,16 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Lock, Unlock, Sparkles, Loader2, X, BookOpen } from 'lucide-react'
 import { useStore } from '../store'
 import { generateUnlockedArcs } from '../services/arcGenerator'
+import { fetchNote } from '../services/trendBiasApi'
 import type { ActKey } from '../types'
+
+
+function stripFrontmatter(raw: string): string {
+  if (!raw.startsWith('---')) return raw
+  const end = raw.indexOf('\n---', 3)
+  return end === -1 ? raw : raw.slice(end + 4).trim()
+}
 
 const ACT_KEYS: ActKey[] = ['ki', 'sho', 'ten', 'ketsu']
 
@@ -24,6 +32,17 @@ export default function NarrativeDashboard({ onDevelopStory }: Props) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedAct, setSelectedAct] = useState<ActKey | null>(null)
+  const [notePanel, setNotePanel] = useState<{ id: string; content: string | null; loading: boolean } | null>(null)
+
+  const handleNoteClick = useCallback(async (noteId: string) => {
+    setNotePanel({ id: noteId, content: null, loading: true })
+    try {
+      const raw = await fetchNote(noteId)
+      setNotePanel({ id: noteId, content: stripFrontmatter(raw), loading: false })
+    } catch {
+      setNotePanel({ id: noteId, content: null, loading: false })
+    }
+  }, [])
 
   const allLocked = ACT_KEYS.every((act) => beats[act].isLocked)
 
@@ -43,7 +62,33 @@ export default function NarrativeDashboard({ onDevelopStory }: Props) {
     setSelectedAct((prev) => (prev === act ? null : act))
   }
 
-  // Build cluster → nodes map for the selected act, with a derived title per cluster
+  const roleStyle: Record<string, { pill: string; badge: string; label: string }> = {
+    locus:    { pill: 'text-violet-300 bg-violet-950/50', badge: 'text-violet-400 bg-violet-950/60', label: 'text-violet-300' },
+    mirror:   { pill: 'text-cyan-300 bg-cyan-950/50',    badge: 'text-cyan-400 bg-cyan-950/60',    label: 'text-cyan-300'    },
+    symbiote: { pill: 'text-amber-300 bg-amber-950/50',  badge: 'text-amber-400 bg-amber-950/60',  label: 'text-amber-300'   },
+    dominant: { pill: 'text-orange-300 bg-orange-950/50',badge: 'text-orange-400 bg-orange-950/60',label: 'text-orange-300'  },
+    neutral:  { pill: 'text-gray-400 bg-gray-800',       badge: 'text-gray-500 bg-gray-800',       label: 'text-gray-100'    },
+  }
+  const getRole = (node: { is_character_node?: boolean; character_role?: string }) =>
+    node.is_character_node ? (node.character_role ?? 'neutral') : null
+
+  // Lookup maps keyed by node id:
+  //   roleByChar    → character_role (pill colour)
+  //   displayByChar → display_name ?? id (pill label)
+  const { roleByChar, displayByChar } = useMemo(() => {
+    const roleByChar = new Map<string, string>()
+    const displayByChar = new Map<string, string>()
+    if (!graphData) return { roleByChar, displayByChar }
+    for (const node of graphData.nodes) {
+      if (node.is_character_node) {
+        if (node.character_role) roleByChar.set(node.id, node.character_role)
+        displayByChar.set(node.id, node.display_name ?? node.id)
+      }
+    }
+    return { roleByChar, displayByChar }
+  }, [graphData])
+
+  // Build cluster → nodes map for the selected act, with characters pinned first
   const clusterPanelData = useMemo(() => {
     if (!selectedAct || !graphData) return null
     const clusterIds = beats[selectedAct].clusterIds
@@ -58,9 +103,15 @@ export default function NarrativeDashboard({ onDevelopStory }: Props) {
       }
     }
 
-    const groups = nodesByCid
+    // Pin character nodes to front of each cluster
+    for (const [cid, nodes] of nodesByCid) {
+      nodesByCid.set(cid, [
+        ...nodes.filter((n) => n.is_character_node),
+        ...nodes.filter((n) => !n.is_character_node),
+      ])
+    }
 
-    return { act: selectedAct, groups }
+    return { act: selectedAct, groups: nodesByCid }
   }, [selectedAct, graphData, beats])
 
   return (
@@ -128,6 +179,24 @@ export default function NarrativeDashboard({ onDevelopStory }: Props) {
               >
                 {beat.text || 'Not yet generated.'}
               </p>
+
+              {/* Character role pills */}
+              {beat.characterNames.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {beat.characterNames.map((name) => {
+                    const role = roleByChar.get(name) ?? 'neutral'
+                    return (
+                      <span
+                        key={name}
+                        className={`text-xs rounded-full px-2 py-0.5 font-medium ${roleStyle[role]?.pill ?? roleStyle.neutral.pill}`}
+                        title={role}
+                      >
+                        {displayByChar.get(name) ?? name}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
 
               {/* Cluster button */}
               <button
@@ -199,6 +268,37 @@ export default function NarrativeDashboard({ onDevelopStory }: Props) {
         )}
       </div>
 
+      {/* Note detail panel */}
+      {notePanel && (
+        <div className="rounded-2xl border border-gray-700 bg-gray-900 p-6 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-widest truncate pr-4">
+              {notePanel.id}
+            </h3>
+            <button
+              onClick={() => setNotePanel(null)}
+              className="flex-shrink-0 text-gray-500 hover:text-gray-300 rounded-lg p-1 transition-colors"
+              title="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {notePanel.loading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 size={14} className="animate-spin" />
+              Loading…
+            </div>
+          ) : notePanel.content === null ? (
+            <p className="text-sm text-gray-600 italic">File not found in repository.</p>
+          ) : (
+            <pre className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap font-sans">
+              {notePanel.content}
+            </pre>
+          )}
+        </div>
+      )}
+
       {/* Cluster detail panel */}
       {clusterPanelData && (
         <div className="rounded-2xl border border-gray-700 bg-gray-900 p-6 flex flex-col gap-6">
@@ -229,37 +329,76 @@ export default function NarrativeDashboard({ onDevelopStory }: Props) {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {nodes.map((node) => (
-                    <div
+                {(() => {
+                  const charNodes = nodes.filter((n) => n.is_character_node)
+                  const noteNodes = nodes.filter((n) => !n.is_character_node)
+                  const renderCard = (node: typeof nodes[0]) => (
+                    <button
                       key={node.id}
-                      className="rounded-xl border border-gray-800 bg-gray-950 p-4 flex flex-col gap-2"
+                      type="button"
+                      onClick={() => handleNoteClick(node.id)}
+                      className={[
+                        'rounded-xl border bg-gray-950 p-4 flex flex-col gap-2 text-left transition-colors',
+                        notePanel?.id === node.id
+                          ? 'border-indigo-500 ring-1 ring-indigo-500'
+                          : 'border-gray-800 hover:border-gray-600',
+                      ].join(' ')}
                     >
-                      <p className="text-sm font-semibold text-gray-100 leading-snug">
-                        {node.id}
+                      <p className="text-sm font-semibold leading-snug flex items-center gap-1.5">
+                        <span className={getRole(node) ? roleStyle[getRole(node)!].label : 'text-gray-100'}>
+                          {node.id}
+                        </span>
+                        {getRole(node) && (
+                          <span className={`text-xs rounded-full px-1.5 py-0.5 font-normal leading-none ${roleStyle[getRole(node)!].badge}`}>
+                            {getRole(node)}
+                          </span>
+                        )}
                       </p>
-
                       {(node.tags?.length ?? 0) > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {node.tags!.map((tag) => (
-                            <span
-                              key={tag}
-                              className="text-xs text-indigo-400 bg-indigo-950/60 rounded-full px-2 py-0.5"
-                            >
+                            <span key={tag} className="text-xs text-indigo-400 bg-indigo-950/60 rounded-full px-2 py-0.5">
                               {tag}
                             </span>
                           ))}
                         </div>
                       )}
-
                       {node.content && (
                         <p className="text-xs text-gray-500 leading-relaxed line-clamp-4">
                           {node.content}
                         </p>
                       )}
-                    </div>
-                  ))}
-                </div>
+                    </button>
+                  )
+                  return (
+                    <>
+                      {charNodes.length > 0 && (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-widest text-gray-500">Characters</span>
+                            <div className="flex-1 border-t border-gray-800" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {charNodes.map(renderCard)}
+                          </div>
+                        </>
+                      )}
+                      {noteNodes.length > 0 && (
+                        <>
+                          {charNodes.length > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold uppercase tracking-widest text-gray-500">Notes</span>
+                              <div className="flex-1 border-t border-gray-800" />
+                            </div>
+                          )}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {noteNodes.map(renderCard)}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             ))}
           </div>

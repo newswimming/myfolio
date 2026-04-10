@@ -12,6 +12,7 @@ interface AppState {
   beats: Record<ActKey, ArcBeat>
   isGenerating: boolean
   isLoadingGraph: boolean
+  isRefreshing: boolean
   error: string | null
   themes: ThemeResult[]
   biasResult: BiasResult | null
@@ -20,6 +21,7 @@ interface AppState {
   setGraphData: (data: GraphData) => void
   toggleBeatLock: (act: ActKey) => void
   fetchGraph: () => Promise<void>
+  refreshGraph: () => Promise<void>
   generateArc: () => Promise<void>
   analyzeArc: () => Promise<void>
 }
@@ -27,7 +29,7 @@ interface AppState {
 const initialBeats: Record<ActKey, ArcBeat> = Object.fromEntries(
   ACT_KEYS.map((act) => [
     act,
-    { act, text: '', isLocked: false, clusterIds: [] },
+    { act, text: '', isLocked: false, clusterIds: [], characterNames: [] },
   ])
 ) as unknown as Record<ActKey, ArcBeat>
 
@@ -36,6 +38,7 @@ export const useStore = create<AppState>((set, get) => ({
   beats: initialBeats,
   isGenerating: false,
   isLoadingGraph: false,
+  isRefreshing: false,
   error: null,
   themes: [],
   biasResult: null,
@@ -47,18 +50,44 @@ export const useStore = create<AppState>((set, get) => ({
   fetchGraph: async () => {
     set({ isLoadingGraph: true, error: null })
     try {
-      const res = await fetch(`${API_BASE}/graph/export-hydrated`)
+      let res: Response
+      try {
+        res = await fetch(`${API_BASE}/graph/export-hydrated`)
+      } catch {
+        // fetch() threw — server not running, fall back to mock silently
+        set({ graphData: mockGraphData })
+        return
+      }
       if (!res.ok) {
         const message = await res.text()
         throw new Error(`Server error ${res.status}: ${message}`)
       }
       const data = (await res.json()) as GraphData
       set({ graphData: data })
-    } catch {
-      // Backend unavailable — load mock data so the app works offline
-      set({ graphData: mockGraphData })
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Graph load failed.' })
     } finally {
       set({ isLoadingGraph: false })
+    }
+  },
+
+  refreshGraph: async () => {
+    set({ isRefreshing: true, error: null })
+    try {
+      // Re-run Leiden partition before re-fetching the graph
+      await fetch(`${API_BASE}/graph/communities/multi`)
+    } catch {
+      // partition failing is non-fatal — still re-fetch graph
+    }
+    try {
+      const res = await fetch(`${API_BASE}/graph/export-hydrated`)
+      if (!res.ok) throw new Error(`Server error ${res.status}`)
+      const data = (await res.json()) as GraphData
+      set({ graphData: data })
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Refresh failed.' })
+    } finally {
+      set({ isRefreshing: false })
     }
   },
 
@@ -97,22 +126,30 @@ export const useStore = create<AppState>((set, get) => ({
     set({ isGenerating: true, error: null })
 
     try {
-      let payload: GenerateArcResponse
+      // Default to mock so TypeScript's control-flow analysis can prove
+      // payload is always initialised before use.  Overwritten with live
+      // data when the backend is reachable and returns a valid response.
+      let payload: GenerateArcResponse = mockArcResponse
 
+      let networkDown = false
+      let res: Response | undefined
       try {
-        const res = await fetch(`${API_BASE}/graph/generate-arc`, {
+        res = await fetch(`${API_BASE}/graph/generate-arc`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ locked_acts }),
         })
+      } catch {
+        // fetch() threw — server not running, use mock arc silently
+        networkDown = true
+        payload = mockArcResponse
+      }
+      if (!networkDown && res) {
         if (!res.ok) {
           const message = await res.text()
           throw new Error(`Server error ${res.status}: ${message}`)
         }
         payload = (await res.json()) as GenerateArcResponse
-      } catch {
-        // Backend unavailable — use mock arc
-        payload = mockArcResponse
       }
 
       set((state) => {
@@ -124,6 +161,7 @@ export const useStore = create<AppState>((set, get) => ({
             ...updated[act],
             text: payload[act],
             clusterIds: payload.clusters_used[act] ?? [],
+            characterNames: payload.characters_per_act?.[act] ?? [],
           }
         }
 
