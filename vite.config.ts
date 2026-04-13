@@ -3,23 +3,24 @@ import react from '@vitejs/plugin-react'
 import fs from 'node:fs'
 import path from 'node:path'
 
-// Root of the Obsidian vault — must match VAULT_DIR in zettlebank-4.2.0/.env
-// (resolved as absolute path, same logic as server.py VAULT_NOTES_DIR.parent)
+// Root of the Obsidian vault
 const VAULT_ROOT = 'C:/Users/andrea/Documents/choracle-remote-v3'
 
 export default defineConfig({
   plugins: [
     react(),
+
+    // ✅ custom notes middleware (kept)
     {
       name: 'notes-server',
       configureServer(server) {
         server.middlewares.use('/notes', (req, res, next) => {
           const noteId = req.url?.replace(/^\//, '')
-          if (!noteId) { next(); return }
+          if (!noteId) {
+            next()
+            return
+          }
 
-          // Resolution order mirrors server.py _find_note_path():
-          //   1. vault root — human-authored notes live here
-          //   2. notes/ subdirectory — character stubs written by ingest-character-graph
           const candidates = [
             path.join(VAULT_ROOT, `${noteId}.md`),
             path.join(VAULT_ROOT, 'notes', `${noteId}.md`),
@@ -32,7 +33,7 @@ export default defineConfig({
               res.end(content)
               return
             } catch {
-              // file not found at this path — try next candidate
+              // try next
             }
           }
 
@@ -42,7 +43,11 @@ export default defineConfig({
       },
     },
   ],
+
   server: {
+    host: '127.0.0.1',   // ✅ FIX: force consistent origin
+    port: 5173,
+
     proxy: {
       '/trend-bias': {
         target: 'https://script-trend-bias-analyzer.onrender.com',

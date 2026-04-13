@@ -1,3 +1,109 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 🎬 Base */
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #f9fafb;
+  color: #111827;
+
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 🎬 ===== BACKGROUND MOTION SYSTEM ===== */
+
+/* 🌫 Layer 1: subtle drift */
+@keyframes driftSoft {
+  0% {
+    transform: translate(-50%, -50%) translateX(0px) translateY(0px);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translate(-50%, -50%) translateX(-8px) translateY(-4px);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-50%, -50%) translateX(-16px) translateY(0px);
+    opacity: 0;
+  }
+}
+
+/* 🌫 Layer 2: deeper slower drift */
+@keyframes driftDeep {
+  0% {
+    transform: translate(-50%, -50%) translateX(0px) translateY(0px);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translate(-50%, -50%) translateX(-12px) translateY(-8px);
+    opacity: 0.35;
+  }
+  100% {
+    transform: translate(-50%, -50%) translateX(-24px) translateY(0px);
+    opacity: 0;
+  }
+}
+
+/* ✨ Soft fade (for non-moving text) */
+@keyframes fadeSoft {
+  0% { opacity: 0; }
+  30% { opacity: 0.35; }
+  70% { opacity: 0.35; }
+  100% { opacity: 0; }
+}
+
+/* ⌨️ Typing effect (NEW) */
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  0%, 100% { border-color: transparent; }
+  50% { border-color: #888; }
+}
+
+/* 🎬 ===== CLASSES ===== */
+
+.animate-drift {
+  animation: driftSoft 16s ease-in-out infinite;
+}
+
+.animate-drift-deep {
+  animation: driftDeep 22s ease-in-out infinite;
+}
+
+.animate-fade {
+  animation: fadeSoft 12s ease-in-out infinite;
+}
+
+/* typing style */
+.animate-typing {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid #888;
+  animation:
+    typing 6s steps(40, end),
+    blink 1s step-end infinite;
+}
+
+/* 🎞️ Film grain overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+}
