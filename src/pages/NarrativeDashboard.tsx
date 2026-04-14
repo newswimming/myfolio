@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import CharacterGraph from '../components/CharacterGraph'
 import { analyzeStory } from '../services/storyApi'
-import BiasRadar from '../components/BiasRadar'
-import BiasCard from '../components/BiasCard'
+import AgencyRepresentationChart from '../components/AgencyRepresentationChart'
 
 export default function NarrativeDashboard({
   analysis,
@@ -54,7 +53,7 @@ export default function NarrativeDashboard({
     ketsu: { title: 'Ketsu', subtitle: 'Resolution' }
   }
 
-  const bias = analysis?.bias
+  const agencyByBeat = analysis?.agency_by_beat
 
   return (
     <div className="min-h-screen bg-white px-8 py-6 flex flex-col gap-8">
@@ -188,36 +187,9 @@ export default function NarrativeDashboard({
         </div>
       )}
 
-      {/* ---------- BIAS DASHBOARD ---------- */}
-      {mode === 'outline' && bias && (
-        <div className="flex flex-col gap-6">
-
-          <div>
-            <h2 className="text-lg font-semibold">
-              Bias & Narrative Framing
-            </h2>
-
-            <p className="text-sm text-gray-500">
-              How power, agency, and perspective are distributed
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8 items-start">
-
-            <div className="bg-white border rounded-xl p-6 shadow-sm flex justify-center">
-              <BiasRadar bias={bias} size={500} />
-            </div>
-
-            <div className="flex flex-col gap-4 w-full">
-              <BiasCard title="Agency Gap" item={bias.agency_gap} />
-              <BiasCard title="Gaze Objectification" item={bias.gaze_objectification} />
-              <BiasCard title="Affection Asymmetry" item={bias.affection_asymmetry} />
-              <BiasCard title="Linguistic Stereotyping" item={bias.linguistic_stereotyping} />
-              <BiasCard title="Dialogue Power" item={bias.dialogue_power_imbalance} />
-            </div>
-
-          </div>
-        </div>
+      {/* ---------- AGENCY & REPRESENTATION ---------- */}
+      {agencyByBeat && mode !== 'brainstorm' && (
+        <AgencyRepresentationChart agencyByBeat={agencyByBeat} />
       )}
 
       {/* ---------- BRAINSTORM (UPDATED ONLY WHERE NEEDED) ---------- */}

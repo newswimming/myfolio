@@ -58,21 +58,4 @@ export interface ThemeResult {
   evidence_note: string
 }
 
-export interface BiasSubdimension {
-  score: number
-  evidence: string[]
-}
-
-export interface BiasResult {
-  overall_bias_score: number
-  bias_1: {
-    agency_gap: BiasSubdimension
-    gaze_objectification: BiasSubdimension
-    affection_asymmetry: BiasSubdimension
-  }
-  bias_2: {
-    linguistic_stereotyping: BiasSubdimension
-    dialogue_power_imbalance: BiasSubdimension
-  }
-}
 

@@ -216,42 +216,6 @@ Each must include:
 ---
 
 ############################
-### STEP 6: BIAS DETECTION
-############################
-
-Evaluate bias ONLY using the provided outline.
-
----
-
-### STRICT RULES
-
-- DO NOT assume gender, race, or identity
-- ONLY use explicit or strongly implied evidence
-- If weak → return "insufficient_evidence"
-
----
-
-### BIAS DIMENSIONS
-
-1. agency_gap  
-2. gaze_objectification  
-3. affection_asymmetry  
-4. linguistic_stereotyping  
-5. dialogue_power_imbalance  
-
----
-
-### FOR EACH
-
-Return:
-
-- score: "0"–"5" OR "insufficient_evidence"
-- confidence: 0–1
-- evidence: 1–2 short grounded observations
-
----
-
-############################
 ### OUTPUT FORMAT (STRICT JSON)
 ############################
 
@@ -290,34 +254,7 @@ Return:
       "detail": "",
       "severity": "low|medium|high"
     }}
-  ],
-  "bias": {{
-    "agency_gap": {{
-      "score": "",
-      "confidence": 0,
-      "evidence": [""]
-    }},
-    "gaze_objectification": {{
-      "score": "",
-      "confidence": 0,
-      "evidence": [""]
-    }},
-    "affection_asymmetry": {{
-      "score": "",
-      "confidence": 0,
-      "evidence": [""]
-    }},
-    "linguistic_stereotyping": {{
-      "score": "",
-      "confidence": 0,
-      "evidence": [""]
-    }},
-    "dialogue_power_imbalance": {{
-      "score": "",
-      "confidence": 0,
-      "evidence": [""]
-    }}
-  }}
+  ]
 }}
 
 ---

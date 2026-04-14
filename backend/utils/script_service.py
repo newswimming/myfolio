@@ -33,6 +33,94 @@ def safe_json_parse(s):
 
 
 # =========================
+# AGENCY BY BEAT
+# =========================
+
+AGENCY_SYSTEM_PROMPT = (
+    "You are a narrative analyst. Given the following excerpt from a script or set of story notes, "
+    "identify all named characters (people and named entities who act, speak, or are described). "
+    "For each character, return:\n"
+    "- agency_score: a float from 0 to 1. Measure how often this character initiates actions, "
+    "makes decisions, drives events, or speaks with authority — based on BOTH their dialogue AND "
+    "how they are described in scene directions.\n"
+    "- representation_score: a float from 0 to 1. Measure how present this character is in this "
+    "excerpt — count BOTH spoken lines AND mentions or descriptions in scene directions.\n"
+    "Normalize scores so the most agentic / most present character in this excerpt = 1.0. "
+    "All other characters are scored relative to them.\n"
+    "Return only a JSON array in this exact format, no explanation:\n"
+    '[{"character": "Name", "agency_score": 0.0, "representation_score": 0.0}]'
+)
+
+
+def score_beat_agency(beat_text):
+    if not beat_text or not beat_text.strip():
+        return []
+    try:
+        r = client.chat.completions.create(
+            model="gpt-5.4-mini",
+            messages=[
+                {"role": "system", "content": AGENCY_SYSTEM_PROMPT},
+                {"role": "user", "content": beat_text[:2000]}
+            ],
+            temperature=0
+        )
+        raw = r.choices[0].message.content.strip()
+        raw = re.sub(r"```json|```", "", raw).strip()
+        return json.loads(raw)
+    except:
+        return []
+
+
+def analyze_agency_by_beat(beats):
+    """
+    Takes beats dict {ki: {summary, comment}, ...}
+    Returns {ki: [...], sho: [...], ten: [...], ketsu: [...]}
+    with character scores normalized and missing beats filled with 0.0.
+    """
+    BEAT_KEYS = ['ki', 'sho', 'ten', 'ketsu']
+
+    beat_texts = {}
+    for key in BEAT_KEYS:
+        beat = beats.get(key, {})
+        summary = beat.get('summary', '') if isinstance(beat, dict) else ''
+        comment = beat.get('comment', '') if isinstance(beat, dict) else ''
+        beat_texts[key] = f"{summary} {comment}".strip()
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {key: executor.submit(score_beat_agency, beat_texts[key]) for key in BEAT_KEYS}
+        raw_results = {key: futures[key].result() for key in BEAT_KEYS}
+
+    # Normalize character names and collect all unique names
+    all_chars = set()
+    normalized_results = {}
+    for key in BEAT_KEYS:
+        normalized = []
+        for entry in raw_results[key]:
+            name = entry.get('character', '').strip().title()
+            if name:
+                all_chars.add(name)
+                normalized.append({
+                    'character': name,
+                    'agency_score': round(float(entry.get('agency_score', 0)), 3),
+                    'representation_score': round(float(entry.get('representation_score', 0)), 3)
+                })
+        normalized_results[key] = normalized
+
+    # Fill missing characters with 0.0 for beats they don't appear in
+    for key in BEAT_KEYS:
+        present = {e['character'] for e in normalized_results[key]}
+        for char in all_chars:
+            if char not in present:
+                normalized_results[key].append({
+                    'character': char,
+                    'agency_score': 0.0,
+                    'representation_score': 0.0
+                })
+
+    return normalized_results
+
+
+# =========================
 # TYPE DETECTION
 # =========================
 def detect_type(text):
@@ -168,7 +256,9 @@ def analyze_script_full(text):
             response_format={"type": "json_object"}
         )
 
-        return {"mode": "script", **safe_json_parse(r.choices[0].message.content)}
+        result = safe_json_parse(r.choices[0].message.content)
+        agency_by_beat = analyze_agency_by_beat(result.get('beats', {}))
+        return {"mode": "script", **result, "agency_by_beat": agency_by_beat}
 
     # LARGE SCRIPT
     scene_data = process_scenes(scenes)
@@ -183,7 +273,9 @@ def analyze_script_full(text):
         response_format={"type": "json_object"}
     )
 
-    return {"mode": "script", **safe_json_parse(r.choices[0].message.content)}
+    result = safe_json_parse(r.choices[0].message.content)
+    agency_by_beat = analyze_agency_by_beat(result.get('beats', {}))
+    return {"mode": "script", **result, "agency_by_beat": agency_by_beat}
 
 
 # =========================
@@ -201,7 +293,9 @@ def analyze_outline(text):
             response_format={"type": "json_object"}
         )
 
-        return {"mode": "outline", **safe_json_parse(r.choices[0].message.content)}
+        result = safe_json_parse(r.choices[0].message.content)
+        agency_by_beat = analyze_agency_by_beat(result.get('beats', {}))
+        return {"mode": "outline", **result, "agency_by_beat": agency_by_beat}
 
     except Exception as e:
         return {"mode": "outline", "error": str(e)}
