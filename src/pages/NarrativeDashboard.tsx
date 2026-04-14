@@ -3,6 +3,7 @@ import CharacterGraph from '../components/CharacterGraph'
 import { analyzeStory } from '../services/storyApi'
 import BiasRadar from '../components/BiasRadar'
 import BiasCard from '../components/BiasCard'
+import TrendsSection from '../components/TrendsSection'
 
 export default function NarrativeDashboard({
   analysis,
@@ -290,7 +291,8 @@ export default function NarrativeDashboard({
 
         </div>
       )}
-
+      {/* ---------- TRENDS ---------- */}
+      <TrendsSection inputText={inputText} />
     </div>
   )
 }

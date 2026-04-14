@@ -76,3 +76,7 @@ export interface BiasResult {
   }
 }
 
+
+export interface TrendsResponse {
+  themes: ThemeResult[]
+}

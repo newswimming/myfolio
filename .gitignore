@@ -1,3 +1,11 @@
 node_modules/
 dist/
 .claude/
+
+# macOS
+.DS_Store
+
+# Python
+.venv/
+__pycache__/
+*.pyc
