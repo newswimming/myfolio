@@ -38,17 +38,23 @@ def safe_json_parse(s):
 
 AGENCY_SYSTEM_PROMPT = (
     "You are a narrative analyst. Given the following excerpt from a script or set of story notes, "
-    "identify all named characters (people and named entities who act, speak, or are described). "
-    "For each character, return:\n"
-    "- agency_score: a float from 0 to 1. Measure how often this character initiates actions, "
-    "makes decisions, drives events, or speaks with authority — based on BOTH their dialogue AND "
-    "how they are described in scene directions.\n"
-    "- representation_score: a float from 0 to 1. Measure how present this character is in this "
-    "excerpt — count BOTH spoken lines AND mentions or descriptions in scene directions.\n"
-    "Normalize scores so the most agentic / most present character in this excerpt = 1.0. "
-    "All other characters are scored relative to them.\n"
-    "Return only a JSON array in this exact format, no explanation:\n"
-    '[{"character": "Name", "agency_score": 0.0, "representation_score": 0.0}]'
+    "identify all named characters (people and named entities who act, speak, or are described).\n\n"
+    "For each character, return two scores AND two one-sentence explanations:\n\n"
+    "- agency_score: a float from 0 to 1. Measures decision-making power — how much this character "
+    "drives events, initiates actions, makes choices, or asserts influence in this excerpt. "
+    "Base this on BOTH their dialogue AND scene directions. Passive, acted-upon, or absent characters "
+    "score low. Characters who command, decide, confront, or lead score high.\n\n"
+    "- agency_reason: a single sentence (max 15 words) explaining why this character received this agency score in this beat.\n\n"
+    "- representation_score: a float from 0 to 1. Measures narrative attention — how much of the "
+    "story's focus lands on this character. Count BOTH spoken lines AND mentions or descriptions in "
+    "scene directions. A character frequently described or referenced even when silent scores higher "
+    "than one who briefly appears.\n\n"
+    "- representation_reason: a single sentence (max 15 words) explaining why this character received this representation score in this beat.\n\n"
+    "Normalize scores so the highest-scoring character in each metric within this excerpt = 1.0.\n\n"
+    "Characters absent from this beat should still be included with scores of 0.0 and reason: "
+    '"Does not appear in this beat."\n\n'
+    "Return only a JSON array in this exact format, no explanation, no markdown:\n"
+    '[{"character": "Name", "agency_score": 0.0, "agency_reason": "...", "representation_score": 0.0, "representation_reason": "..."}]'
 )
 
 
@@ -102,7 +108,9 @@ def analyze_agency_by_beat(beats):
                 normalized.append({
                     'character': name,
                     'agency_score': round(float(entry.get('agency_score', 0)), 3),
-                    'representation_score': round(float(entry.get('representation_score', 0)), 3)
+                    'agency_reason': entry.get('agency_reason', ''),
+                    'representation_score': round(float(entry.get('representation_score', 0)), 3),
+                    'representation_reason': entry.get('representation_reason', '')
                 })
         normalized_results[key] = normalized
 
@@ -114,7 +122,9 @@ def analyze_agency_by_beat(beats):
                 normalized_results[key].append({
                     'character': char,
                     'agency_score': 0.0,
-                    'representation_score': 0.0
+                    'agency_reason': 'Does not appear in this beat.',
+                    'representation_score': 0.0,
+                    'representation_reason': 'Does not appear in this beat.'
                 })
 
     return normalized_results
