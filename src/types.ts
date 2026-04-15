@@ -59,3 +59,7 @@ export interface ThemeResult {
 }
 
 
+
+export interface TrendsResponse {
+  themes: ThemeResult[]
+}

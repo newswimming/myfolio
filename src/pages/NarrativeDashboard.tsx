@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import CharacterGraph from '../components/CharacterGraph'
 import { analyzeStory } from '../services/storyApi'
 import AgencyRepresentationChart from '../components/AgencyRepresentationChart'
+import TrendsSection from '../components/TrendsSection'
 
 export default function NarrativeDashboard({
   analysis,
@@ -203,6 +204,14 @@ export default function NarrativeDashboard({
           <>
             <div className="h-px bg-cinema-border" />
             <AgencyRepresentationChart agencyByBeat={agencyByBeat} />
+          </>
+        )}
+
+        {/* THEMES & REAL-WORLD CONTEXT */}
+        {mode !== 'brainstorm' && inputText && (
+          <>
+            <div className="h-px bg-cinema-border" />
+            <TrendsSection inputText={inputText} />
           </>
         )}
 
