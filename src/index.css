@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 /* ===== BASE ===== */
+html {
+  font-size: 18px;
+}
+
 html, body, #root {
   height: 100%;
 }
@@ -87,4 +91,31 @@ body::after {
 
 .animate-analyzing {
   animation: analyzingPulse 1.4s ease-in-out infinite;
+}
+
+/* ===== PRINT / PDF EXPORT ===== */
+@media print {
+  /* Suppress grain overlay and animations */
+  body::after { display: none !important; }
+  * { animation: none !important; }
+
+  /* White canvas, dark ink */
+  body { background: #ffffff !important; color: #111111 !important; }
+
+  /* Hide interactive chrome */
+  .no-print { display: none !important; }
+
+  /* Override cinema surface colors */
+  [class*="bg-cinema-bg"]      { background: #ffffff !important; }
+  [class*="bg-cinema-surface"] { background: #f4f4f4 !important; }
+  [class*="text-cinema-text"]  { color: #111111 !important; }
+  [class*="text-cinema-muted"] { color: #555555 !important; }
+  [class*="text-cinema-accent"]{ color: #7a6040 !important; }
+  [class*="border-cinema-border"]{ border-color: #cccccc !important; }
+
+  /* Keep page content together where possible */
+  .max-w-\[1400px\] { max-width: 100% !important; padding: 0 24px !important; }
+
+  /* Force page breaks before major sections */
+  .h-px { page-break-after: avoid; }
 }

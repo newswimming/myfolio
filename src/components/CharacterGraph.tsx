@@ -22,12 +22,14 @@ export default function CharacterGraph({ data, stage }: any) {
 
     const resize = () => {
       const rect = containerRef.current!.getBoundingClientRect()
-      setSize({ w: rect.width, h: 420 })
+      setSize({ w: rect.width, h: rect.height || 420 })
     }
 
     resize()
-    window.addEventListener('resize', resize)
-    return () => window.removeEventListener('resize', resize)
+
+    const ro = new ResizeObserver(resize)
+    ro.observe(containerRef.current)
+    return () => ro.disconnect()
   }, [])
 
   // ---------- GET DATA ----------
@@ -147,7 +149,7 @@ export default function CharacterGraph({ data, stage }: any) {
   }
 
   return (
-    <div ref={containerRef} className="relative w-full h-[420px]">
+    <div ref={containerRef} className="relative w-full h-full">
 
       <ForceGraph2D
         ref={fgRef}
@@ -186,14 +188,16 @@ export default function CharacterGraph({ data, stage }: any) {
         }
 
         // ---------- NODE DRAW ----------
+        backgroundColor="#141312"
+
         nodeCanvasObject={(node: any, ctx, scale) => {
           const fontSize = 10 / scale
-          ctx.font = `${fontSize}px Inter`
+          ctx.font = `${fontSize}px "DM Mono", monospace`
           ctx.textAlign = 'center'
 
           const isMain = mainChar && node.id === mainChar.id
 
-          ctx.fillStyle = isMain ? '#111' : '#6b7280'
+          ctx.fillStyle = isMain ? '#F0EDE8' : '#8A8480'
           ctx.fillText(node.id, node.x, node.y + 8)
         }}
 
@@ -210,37 +214,32 @@ export default function CharacterGraph({ data, stage }: any) {
 
       {/* ---------- BIO PANEL ---------- */}
       {selectedChar && (
-        <div className="absolute top-4 right-4 w-[260px] bg-white border rounded-xl p-4 shadow-lg">
-          <div className="font-semibold mb-1">{selectedChar.id}</div>
+        <div className="absolute top-4 right-4 w-[240px] bg-cinema-surface border border-cinema-border p-4">
+          <div className="font-serif text-sm text-cinema-accent mb-1">{selectedChar.id}</div>
 
           {selectedChar.description && (
-            <div className="text-xs text-gray-500 mb-2">
+            <div className="font-mono text-xs text-cinema-muted mb-2 leading-relaxed">
               {selectedChar.description}
             </div>
           )}
 
-          <div className="text-xs text-gray-700">
+          <div className="font-mono text-xs text-cinema-muted leading-relaxed">
             {selectedChar.bio}
           </div>
         </div>
       )}
 
       {/* ---------- LEGEND ---------- */}
-      <div className="absolute bottom-4 left-4 bg-white border rounded-lg px-3 py-2 shadow text-xs space-y-1">
-
-        <div className="font-medium mb-1">Legend</div>
-
+      <div className="absolute bottom-4 left-4 bg-cinema-surface border border-cinema-border px-3 py-2">
+        <div className="font-mono text-xs uppercase tracking-[0.15em] text-cinema-muted mb-2">
+          Legend
+        </div>
         {Object.entries(TYPE_COLORS).map(([k, v]) => (
-          <div key={k} className="flex items-center gap-2">
-            <div style={{
-              width: 16,
-              height: 2,
-              background: v as string
-            }} />
-            {k}
+          <div key={k} className="flex items-center gap-2 mb-1">
+            <div style={{ width: 16, height: 2, background: v as string, flexShrink: 0 }} />
+            <span className="font-mono text-xs text-cinema-text">{k}</span>
           </div>
         ))}
-
       </div>
 
     </div>

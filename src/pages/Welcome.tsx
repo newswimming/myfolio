@@ -29,6 +29,7 @@ export default function Welcome({ onStart }: WelcomeProps) {
   const [progress, setProgress] = useState(0)
   const [stage, setStage] = useState('')
   const [showPanel, setShowPanel] = useState(false)
+  const [logVersion, setLogVersion] = useState(0)
 
   const [showShare, setShowShare] = useState(false)
   const [shareLink, setShareLink] = useState('')
@@ -125,6 +126,15 @@ export default function Welcome({ onStart }: WelcomeProps) {
     onStart(log.result, log.input, log.result.mode)
   }
 
+  const handleDeleteLog = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation()
+    if (!window.confirm('Remove this project from history?')) return
+    const logs = getLogs()
+    logs.splice(index, 1)
+    localStorage.setItem('story_logs', JSON.stringify(logs))
+    setLogVersion(v => v + 1)
+  }
+
   const handleShare = () => {
     const url = window.location.href
     setShareLink(url)
@@ -163,18 +173,12 @@ export default function Welcome({ onStart }: WelcomeProps) {
     }, 400)
   }
 
+  // Read logs reactively so deletes are reflected
+  const logs = getLogs()
+  void logVersion // consumed to trigger re-render
+
   return (
     <div className="relative h-screen flex items-center justify-center bg-cinema-bg overflow-hidden">
-
-      {/* MENU */}
-      <div className="absolute top-6 right-6 z-20">
-        <button
-          onClick={() => setShowPanel(!showPanel)}
-          className="font-mono text-cinema-muted hover:text-cinema-text transition text-sm tracking-cinema uppercase"
-        >
-          Menu
-        </button>
-      </div>
 
       {/* SHARE POPUP */}
       {showShare && (
@@ -183,9 +187,9 @@ export default function Welcome({ onStart }: WelcomeProps) {
             ref={shareRef}
             className="bg-cinema-surface border border-cinema-border p-6 w-[360px] flex flex-col gap-4"
           >
-            <h3 className="font-mono text-xs uppercase tracking-cinema text-cinema-muted">
+            <p className="font-mono text-xs uppercase tracking-cinema text-cinema-muted">
               Share this page
-            </h3>
+            </p>
 
             <input
               value={shareLink}
@@ -222,25 +226,34 @@ export default function Welcome({ onStart }: WelcomeProps) {
             className="w-[300px] bg-cinema-surface border-l border-cinema-border h-full p-6 flex flex-col"
           >
             <p className="text-xs font-mono uppercase tracking-cinema text-cinema-muted mb-6">
-              History
+              My Projects
             </p>
 
             <div className="flex-1 overflow-y-auto flex flex-col gap-2">
-              {getLogs().length === 0 ? (
+              {logs.length === 0 ? (
                 <p className="text-xs font-mono text-cinema-muted">No history yet.</p>
               ) : (
-                getLogs().map((log: any, i: number) => (
+                logs.map((log: any, i: number) => (
                   <div
                     key={i}
                     onClick={() => handleLoadLog(log)}
-                    className="p-3 border border-cinema-border hover:border-cinema-accent cursor-pointer transition"
+                    className="p-3 border border-cinema-border hover:border-cinema-accent cursor-pointer transition group relative"
                   >
-                    <p className="text-sm font-mono text-cinema-text">
-                      {log.fileName || log.input.slice(0, 40)}
+                    <p className="font-mono text-sm text-cinema-text pr-6">
+                      {log.fileName || log.input.slice(0, 40) || 'Untitled'}
                     </p>
-                    <p className="text-xs font-mono text-cinema-muted mt-1">
+                    <p className="font-mono text-xs text-cinema-muted mt-1">
                       {new Date(log.timestamp).toLocaleString()}
                     </p>
+
+                    {/* Delete button */}
+                    <button
+                      onClick={(e) => handleDeleteLog(e, i)}
+                      className="absolute top-3 right-3 font-mono text-xs text-cinema-muted opacity-0 group-hover:opacity-100 hover:text-cinema-danger transition"
+                      title="Remove from history"
+                    >
+                      ✕
+                    </button>
                   </div>
                 ))
               )}
@@ -297,7 +310,9 @@ export default function Welcome({ onStart }: WelcomeProps) {
 
         <div className="h-px w-24 bg-cinema-border mt-2" />
 
-        <div className="flex gap-4 mt-2">
+        {/* PRIMARY ACTIONS — all three buttons together */}
+        <div className="flex gap-4 mt-2 flex-wrap justify-center">
+
           <label className="px-6 py-2.5 border border-cinema-accent text-cinema-accent font-mono text-xs uppercase tracking-cinema cursor-pointer hover:bg-cinema-accent/10 transition">
             Upload File
             <input
@@ -316,6 +331,14 @@ export default function Welcome({ onStart }: WelcomeProps) {
           >
             Start Writing
           </button>
+
+          <button
+            onClick={() => setShowPanel(true)}
+            className="px-6 py-2.5 border border-cinema-border text-cinema-muted font-mono text-xs uppercase tracking-cinema hover:border-cinema-accent hover:text-cinema-accent transition"
+          >
+            My Projects
+          </button>
+
         </div>
 
         {loading && (

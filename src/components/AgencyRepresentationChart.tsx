@@ -255,6 +255,8 @@ function ChartSection({
 export default function AgencyRepresentationChart({ agencyByBeat }: { agencyByBeat: AgencyByBeat }) {
   if (!agencyByBeat) return null
 
+  const [activeTab, setActiveTab] = useState<'agency' | 'representation'>('agency')
+
   const allCharacters = useMemo(() => {
     const chars = new Set<string>()
     BEAT_KEYS.forEach(key => {
@@ -408,30 +410,54 @@ export default function AgencyRepresentationChart({ agencyByBeat }: { agencyByBe
         </div>
       )}
 
-      {/* GRAPH 1 — AGENCY */}
-      <ChartSection
-        title="Agency"
-        subtitle="Decision-making power across the narrative arc"
-        yLabel="AGENCY SCORE"
-        data={agencyData}
-        characters={visibleChars}
-        colorMap={colorMap}
-        metric="agency"
-      />
+      {/* TAB TOGGLE */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #2A2825' }}>
+        {(['agency', 'representation'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              fontFamily: '"DM Mono", ui-monospace, monospace',
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.15em',
+              padding: '8px 20px',
+              border: 'none',
+              borderBottom: activeTab === tab ? '2px solid #C8B89A' : '2px solid transparent',
+              background: 'transparent',
+              color: activeTab === tab ? '#C8B89A' : '#8A8480',
+              cursor: 'pointer',
+              marginBottom: -1,
+              transition: 'color 0.15s',
+            }}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
 
-      {/* DIVIDER */}
-      <div style={{ height: 1, background: '#2A2825', width: '100%' }} />
-
-      {/* GRAPH 2 — REPRESENTATION */}
-      <ChartSection
-        title="Representation"
-        subtitle="Narrative attention across the story arc"
-        yLabel="REPRESENTATION SCORE"
-        data={repData}
-        characters={visibleChars}
-        colorMap={colorMap}
-        metric="representation"
-      />
+      {/* ACTIVE CHART */}
+      {activeTab === 'agency' ? (
+        <ChartSection
+          title="Agency"
+          subtitle="Decision-making power across the narrative arc"
+          yLabel="AGENCY SCORE"
+          data={agencyData}
+          characters={visibleChars}
+          colorMap={colorMap}
+          metric="agency"
+        />
+      ) : (
+        <ChartSection
+          title="Representation"
+          subtitle="Narrative attention across the story arc"
+          yLabel="REPRESENTATION SCORE"
+          data={repData}
+          characters={visibleChars}
+          colorMap={colorMap}
+          metric="representation"
+        />
+      )}
 
     </div>
   )
