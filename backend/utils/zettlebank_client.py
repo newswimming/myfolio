@@ -82,6 +82,23 @@ def sync_note(note_id: str, updates: dict) -> dict | None:
         return None
 
 
+def ingest_from_myfolio(input_id: str, text: str, mode: str = "brainstorm") -> dict | None:
+    """
+    POST /ingest/from-myfolio — classify raw text and create 1–4 vault notes.
+    All character/topic extraction runs inside zettlebank (spaCy + BERTopic + Ollama).
+    Returns MyfolioIngestResponse or None on failure.
+    """
+    try:
+        r = httpx.post(
+            _url("/ingest/from-myfolio"),
+            json={"input_id": input_id, "text": text, "mode": mode},
+            timeout=_ARC_TIMEOUT,
+        )
+        return r.json() if r.status_code == 200 else None
+    except Exception:
+        return None
+
+
 def generate_arc(locked_acts: list | None = None) -> dict | None:
     """
     POST /graph/generate-arc — derive ki/sho/ten/ketsu beats from the

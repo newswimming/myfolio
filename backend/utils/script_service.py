@@ -246,7 +246,7 @@ def _run_zettlebank_pipeline(result):
         }
 
     # Step 1: Ingest character graph into zettlebank
-    payload = build_ingest_payload(result)
+    payload = build_ingest_payload(result.get('characters', []), result.get('graphs_by_stage', {}))
     ingest_character_graph(payload)
 
     # Step 2: Enrich topics and submit as notes
@@ -259,14 +259,14 @@ def _run_zettlebank_pipeline(result):
         name = (char.get('name') or '').strip()
         if not name:
             continue
-        note_id = name.lower().replace(' ', '_')
+        note_id = name.lower().replace(' ', '-')
         bio = char.get('bio', '') or ''
         analysis = analyze_note(note_id, bio)
         if has_momentum(analysis):
             sync_note(note_id, {'is_narrative_pivot': True})
 
     # Step 4: Generate arc from networkx graph
-    arc_response = generate_arc({})
+    arc_response = generate_arc(None)
     beats = map_arc_to_beats(arc_response) if arc_response else _empty_beats()
 
     return {
