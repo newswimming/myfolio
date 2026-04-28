@@ -188,6 +188,34 @@ Example:
 ---
 
 ############################
+### TOPIC EXTRACTION
+############################
+
+Extract 1–4 big-picture topics from the generated story.
+
+Topics are expositional or contextual — not plot events.
+
+Examples:
+- "Power and Corruption" (theme)
+- "Urban Isolation" (societal backdrop)
+- "Inherited Trauma" (psychological context)
+
+Each topic MUST include:
+
+- title (2–5 words, clear and specific)
+- content (2–4 sentences explaining the topic as it relates to this story)
+- tags: array of strings using ONLY these formats:
+  - topic/<slug> (e.g., topic/class-inequality, topic/grief, topic/identity)
+  - affect/<value> where value is exactly ONE of: positive, negative, neutral, ambivalent, melancholic, tense, hopeful
+
+RULES:
+- DO NOT use aspect/ prefix
+- Each topic MUST have at least one topic/ tag and exactly one affect/ tag
+- Slug must be lowercase, hyphen-separated
+
+---
+
+############################
 ### OUTPUT FORMAT (STRICT JSON)
 ############################
 
@@ -237,7 +265,14 @@ Example:
         "reason": ""
       }}
     ]
-  }}
+  }},
+  "topics": [
+    {{
+      "title": "",
+      "content": "",
+      "tags": ["topic/<slug>", "affect/<value>"]
+    }}
+  ]
 }}
 
 ---

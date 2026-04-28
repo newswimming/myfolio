@@ -66,52 +66,7 @@ Instead:
 ---
 
 ############################
-### STEP 2: STORY STRUCTURE
-############################
-
-Use 4 stages:
-
-- setup
-- development
-- twist
-- resolution
-
----
-
-### EACH STAGE MUST INCLUDE
-
-1. Summary (2–4 sentences)
-
-- concrete events (NOT abstract analysis)
-- include characters if present
-- show cause → effect progression
-- feel like a film scene
-
-2. Comment (1 short sentence)
-
-- sharp, director-style insight
-- emotional or thematic observation
-
----
-
-############################
-### STEP 3: HANDLE GAPS
-############################
-
-If parts are missing:
-
-- infer conservatively from context
-- stay grounded
-- DO NOT invent major new events
-
-Mark inferred stages in:
-
-"beats_filled"
-
----
-
-############################
-### STEP 4: CHARACTER GRAPH (NEW)
+### STEP 2: CHARACTER GRAPH (CRITICAL)
 ############################
 
 You MUST build a stage-based character graph.
@@ -216,16 +171,46 @@ Each must include:
 ---
 
 ############################
+### TOPIC EXTRACTION
+############################
+
+Extract 1–4 big-picture topics from the story.
+
+Topics are expositional or contextual — not plot events.
+
+Examples:
+- "Power and Corruption" (theme)
+- "Cold War Berlin" (historical/geographic context)
+- "Class Inequality" (societal backdrop)
+
+Each topic MUST include:
+
+- title (2–5 words, clear and specific)
+- content (2–4 sentences explaining the topic as it relates to this story)
+- tags: array of strings using ONLY these formats:
+  - topic/<slug> (e.g., topic/class-inequality, topic/grief, topic/identity)
+  - affect/<value> where value is exactly ONE of: positive, negative, neutral, ambivalent, melancholic, tense, hopeful
+
+RULES:
+- DO NOT use aspect/ prefix
+- Each topic MUST have at least one topic/ tag and exactly one affect/ tag
+- Slug must be lowercase, hyphen-separated
+
+---
+
+############################
 ### OUTPUT FORMAT (STRICT JSON)
 ############################
 
 {{
-  "beats": {{
-    "ki": {{"summary": "", "comment": ""}},
-    "sho": {{"summary": "", "comment": ""}},
-    "ten": {{"summary": "", "comment": ""}},
-    "ketsu": {{"summary": "", "comment": ""}}
-  }},
+  "characters": [
+    {{
+      "name": "",
+      "description": "",
+      "importance": 0.8,
+      "bio": ""
+    }}
+  ],
   "graphs_by_stage": {{
     "ki": {{
       "characters": [],
@@ -253,6 +238,13 @@ Each must include:
       "type": "",
       "detail": "",
       "severity": "low|medium|high"
+    }}
+  ],
+  "topics": [
+    {{
+      "title": "",
+      "content": "",
+      "tags": ["topic/<slug>", "affect/<value>"]
     }}
   ]
 }}

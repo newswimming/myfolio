@@ -6,6 +6,10 @@ from concurrent.futures import ThreadPoolExecutor
 from prompts.script_prompt import build_script_prompt
 from prompts.outline_prompt import build_outline_prompt
 from prompts.brainstorm_prompt import build_brainstorm_prompt
+from utils.zettlebank_client import is_alive, ingest_character_graph, analyze_note, sync_note, generate_arc
+from utils.schema_bridge import (
+    build_ingest_payload, build_topic_notes, map_arc_to_beats, has_momentum
+)
 
 client = OpenAI()
 
@@ -128,6 +132,160 @@ def analyze_agency_by_beat(beats):
                 })
 
     return normalized_results
+
+
+# =========================
+# CHARACTER ROLE DERIVATION
+# =========================
+
+def derive_character_roles(characters, agency_by_beat):
+    """
+    Derives character_role, agency_score, and attention_score for each character
+    by aggregating their per-beat scores from agency_by_beat.
+
+    Roles map to positions on the Agency × Attention axes:
+      locus    — highest combined score; the narrative protagonist
+      symbiote — second-highest combined AND within 65% of locus; closely bonded
+      agent    — agency >= 1.4× attention; drives events, less narrative spotlight
+      mirror   — attention >= 1.4× agency; narrative focal point, more reactive
+      neutral  — low on both axes; peripheral presence
+    """
+    BEAT_KEYS = ['ki', 'sho', 'ten', 'ketsu']
+
+    # Accumulate scores only for beats where the character appears
+    score_map = {}
+    for key in BEAT_KEYS:
+        for entry in agency_by_beat.get(key, []):
+            name = (entry.get('character') or '').strip()
+            if not name:
+                continue
+            if name not in score_map:
+                score_map[name] = {'agency': [], 'attention': []}
+            a = entry.get('agency_score', 0.0)
+            r = entry.get('representation_score', 0.0)
+            if a > 0.0 or r > 0.0:
+                score_map[name]['agency'].append(a)
+                score_map[name]['attention'].append(r)
+
+    # Compute per-character averages
+    char_avgs = {}
+    for name, data in score_map.items():
+        avg_agency = sum(data['agency']) / len(data['agency']) if data['agency'] else 0.0
+        avg_attention = sum(data['attention']) / len(data['attention']) if data['attention'] else 0.0
+        char_avgs[name] = {
+            'agency_score': round(avg_agency, 3),
+            'attention_score': round(avg_attention, 3),
+            'combined': round(avg_agency + avg_attention, 3)
+        }
+
+    # Sort by combined descending for role assignment
+    sorted_chars = sorted(char_avgs.items(), key=lambda x: x[1]['combined'], reverse=True)
+    locus_combined = sorted_chars[0][1]['combined'] if sorted_chars else 1.0
+
+    roles = {}
+    for i, (name, avgs) in enumerate(sorted_chars):
+        agency = avgs['agency_score']
+        attention = avgs['attention_score']
+        combined = avgs['combined']
+
+        if i == 0:
+            role = 'locus'
+        elif i == 1 and locus_combined > 0 and combined / locus_combined >= 0.65:
+            role = 'symbiote'
+        elif agency > 0 and attention > 0 and agency >= attention * 1.4:
+            role = 'agent'
+        elif attention > 0 and agency > 0 and attention >= agency * 1.4:
+            role = 'mirror'
+        else:
+            role = 'neutral'
+
+        roles[name] = {
+            'character_role': role,
+            'agency_score': agency,
+            'attention_score': attention
+        }
+
+    # Match roles back to the characters list using title-case comparison
+    enriched = []
+    for char in characters:
+        name = (char.get('name') or '').strip()
+        match = roles.get(name) or roles.get(name.title())
+        if match:
+            enriched.append({**char, **match})
+        else:
+            enriched.append({**char, 'character_role': 'neutral', 'agency_score': 0.0, 'attention_score': 0.0})
+
+    return enriched
+
+
+# =========================
+# ZETTLEBANK PIPELINE
+# =========================
+
+def _empty_beats():
+    return {
+        'ki':    {'summary': '', 'comment': ''},
+        'sho':   {'summary': '', 'comment': ''},
+        'ten':   {'summary': '', 'comment': ''},
+        'ketsu': {'summary': '', 'comment': ''},
+    }
+
+
+def _run_zettlebank_pipeline(result):
+    """
+    Sends extracted characters/relationships/topics to zettlebank,
+    retrieves a graph-derived narrative arc, and returns enriched beats + topics.
+
+    If zettlebank is offline, returns gracefully with empty beats.
+    """
+    if not is_alive():
+        return {
+            'beats': _empty_beats(),
+            'topics': build_topic_notes(result.get('topics', [])),
+            'zettlebank': {'available': False},
+        }
+
+    # Step 1: Ingest character graph into zettlebank
+    payload = build_ingest_payload(result)
+    ingest_character_graph(payload)
+
+    # Step 2: Enrich topics and submit as notes
+    topic_notes = build_topic_notes(result.get('topics', []))
+    for note in topic_notes:
+        analyze_note(note['note_id'], note['content'])
+
+    # Step 3: Detect narrative pivots via smart_relation momentum
+    for char in result.get('characters', []):
+        name = (char.get('name') or '').strip()
+        if not name:
+            continue
+        note_id = name.lower().replace(' ', '_')
+        bio = char.get('bio', '') or ''
+        analysis = analyze_note(note_id, bio)
+        if has_momentum(analysis):
+            sync_note(note_id, {'is_narrative_pivot': True})
+
+    # Step 4: Generate arc from networkx graph
+    arc_response = generate_arc({})
+    beats = map_arc_to_beats(arc_response) if arc_response else _empty_beats()
+
+    return {
+        'beats': beats,
+        'topics': topic_notes,
+        'zettlebank': {'available': True},
+    }
+
+
+def _sync_agent_characters(enriched_characters):
+    """
+    After role derivation, sync agent characters to the ketsu narrative act
+    in zettlebank so future arc calls privilege their resolution placement.
+    """
+    for char in enriched_characters:
+        if char.get('character_role') == 'agent':
+            note_id = (char.get('name') or '').lower().replace(' ', '_')
+            if note_id:
+                sync_note(note_id, {'narrative_act': 'ketsu'})
 
 
 # =========================
@@ -256,25 +414,12 @@ def analyze_script_full(text):
 
     # SMALL SCRIPT
     if len(scenes) < 5:
-
         prompt = build_script_prompt(text[:6000])
-
-        r = client.chat.completions.create(
-            model="gpt-5.4-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            response_format={"type": "json_object"}
-        )
-
-        result = safe_json_parse(r.choices[0].message.content)
-        agency_by_beat = analyze_agency_by_beat(result.get('beats', {}))
-        return {"mode": "script", **result, "agency_by_beat": agency_by_beat}
-
-    # LARGE SCRIPT
-    scene_data = process_scenes(scenes)
-    compressed = build_compressed_script(scene_data)
-
-    prompt = build_script_prompt(compressed)
+    else:
+        # LARGE SCRIPT — compress first
+        scene_data = process_scenes(scenes)
+        compressed = build_compressed_script(scene_data)
+        prompt = build_script_prompt(compressed)
 
     r = client.chat.completions.create(
         model="gpt-5.4-mini",
@@ -284,8 +429,30 @@ def analyze_script_full(text):
     )
 
     result = safe_json_parse(r.choices[0].message.content)
-    agency_by_beat = analyze_agency_by_beat(result.get('beats', {}))
-    return {"mode": "script", **result, "agency_by_beat": agency_by_beat}
+
+    # Zettlebank pipeline: ingest graph, submit topics, generate arc-derived beats
+    zb = _run_zettlebank_pipeline(result)
+    beats = zb['beats']
+    topic_notes = zb['topics']
+
+    agency_by_beat = analyze_agency_by_beat(beats)
+    enriched_characters = derive_character_roles(result.get('characters', []), agency_by_beat)
+
+    # Sync agent characters back to zettlebank for future arc calls
+    try:
+        _sync_agent_characters(enriched_characters)
+    except Exception:
+        pass
+
+    return {
+        "mode": "script",
+        **result,
+        "beats": beats,
+        "characters": enriched_characters,
+        "agency_by_beat": agency_by_beat,
+        "topics": topic_notes,
+        "zettlebank": zb['zettlebank'],
+    }
 
 
 # =========================
@@ -304,8 +471,29 @@ def analyze_outline(text):
         )
 
         result = safe_json_parse(r.choices[0].message.content)
-        agency_by_beat = analyze_agency_by_beat(result.get('beats', {}))
-        return {"mode": "outline", **result, "agency_by_beat": agency_by_beat}
+
+        # Zettlebank pipeline: ingest graph, submit topics, generate arc-derived beats
+        zb = _run_zettlebank_pipeline(result)
+        beats = zb['beats']
+        topic_notes = zb['topics']
+
+        agency_by_beat = analyze_agency_by_beat(beats)
+        enriched_characters = derive_character_roles(result.get('characters', []), agency_by_beat)
+
+        try:
+            _sync_agent_characters(enriched_characters)
+        except Exception:
+            pass
+
+        return {
+            "mode": "outline",
+            **result,
+            "beats": beats,
+            "characters": enriched_characters,
+            "agency_by_beat": agency_by_beat,
+            "topics": topic_notes,
+            "zettlebank": zb['zettlebank'],
+        }
 
     except Exception as e:
         return {"mode": "outline", "error": str(e)}

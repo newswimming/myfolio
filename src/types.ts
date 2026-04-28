@@ -1,3 +1,13 @@
+export interface Character {
+  name: string
+  description?: string
+  importance?: number
+  bio?: string
+  character_role?: 'locus' | 'symbiote' | 'mirror' | 'agent' | 'neutral'
+  agency_score?: number
+  attention_score?: number
+}
+
 export interface GraphNode {
   id: string
   display_name?: string
@@ -8,7 +18,7 @@ export interface GraphNode {
   content: string
   is_character_node?: boolean
   is_narrative_pivot?: boolean
-  character_role?: 'locus' | 'symbiote' | 'mirror' | 'dominant' | 'neutral'
+  character_role?: 'locus' | 'symbiote' | 'mirror' | 'agent' | 'neutral'
   power_role?: string
   attention_score?: number
   agency_score?: number
@@ -62,4 +72,12 @@ export interface ThemeResult {
 
 export interface TrendsResponse {
   themes: ThemeResult[]
+}
+
+export interface Topic {
+  title: string
+  content: string
+  tags: string[]
+  note_id?: string
+  obsidian_md?: string
 }

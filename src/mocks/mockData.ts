@@ -10,7 +10,7 @@ import type { GraphData, GenerateArcResponse } from '../types'
 // Character nodes (is_character_node: true):
 //   ki-woo      — locus,    community 0 (Ki)
 //   chung-sook  — mirror,   community 0 (Ki)
-//   dong-ik     — dominant, community 1 (Sho)
+//   dong-ik     — agent,    community 1 (Sho)
 // ---------------------------------------------------------------------------
 export const mockGraphData: GraphData = {
   nodes: [
@@ -23,7 +23,7 @@ export const mockGraphData: GraphData = {
       is_character_node: true,
       character_role: 'locus',
       tags: ['aspect/character/ki-woo', 'affect/mu', 'code/ki-2'],
-      content: 'Ki-woo is a character introduced in SCENE_003. Relations: ROMANTIC with chung-sook. Interactions: dong-ik (neutral, submissive)',
+      content: 'Ki-woo is a character introduced in SCENE_003. Relations: ROMANTIC with chung-sook. Interactions: dong-ik (neutral, reactive)',
     },
     {
       id: 'chung-sook',
@@ -41,9 +41,9 @@ export const mockGraphData: GraphData = {
       macro_id: 1,
       character_community_id: 1,
       is_character_node: true,
-      character_role: 'dominant',
+      character_role: 'agent',
       tags: ['aspect/character/dong-ik', 'affect/negative', 'code/sho-5'],
-      content: 'Dong-ik is a character introduced in SCENE_023. Relations: BOSS_OF with ki-woo. Interactions: ki-woo (neutral, dominant)',
+      content: 'Dong-ik is a character introduced in SCENE_023. Relations: BOSS_OF with ki-woo. Interactions: ki-woo (neutral, driven)',
     },
 
     // Cluster 0 — Identity & origins

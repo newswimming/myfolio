@@ -6,6 +6,9 @@ type CharacterNode = {
   bio?: string
   description?: string
   importance?: number
+  character_role?: 'locus' | 'symbiote' | 'mirror' | 'agent' | 'neutral'
+  agency_score?: number
+  attention_score?: number
 }
 
 export default function CharacterGraph({ data, stage }: any) {
@@ -46,7 +49,10 @@ export default function CharacterGraph({ data, stage }: any) {
       id: c.name,
       bio: c.bio,
       description: c.description,
-      importance: c.importance || 0.5
+      importance: c.importance || 0.5,
+      character_role: c.character_role,
+      agency_score: c.agency_score ?? 0,
+      attention_score: c.attention_score ?? 0,
     })
   })
 
@@ -73,13 +79,23 @@ export default function CharacterGraph({ data, stage }: any) {
     (n: any) => n.id && n.id !== 'undefined'
   )
 
-  // ---------- MAIN CHARACTER ----------
-  const mainChar =
-    nodes.length > 0
-      ? nodes.reduce((a: any, b: any) =>
-          (a.importance || 0) > (b.importance || 0) ? a : b
-        )
-      : null
+  // ---------- ROLE COLORS ----------
+  // Maps character_role to a cinematic color on the Agency × Attention axes:
+  //   locus    = high agency + high attention  → warm white (protagonist)
+  //   agent    = high agency, lower attention  → dusty rose (action-driven)
+  //   mirror   = high attention, lower agency  → sage (reflective focus)
+  //   symbiote = bonded to locus               → warm tan (secondary lead)
+  //   neutral  = low on both axes              → muted slate (peripheral)
+  const ROLE_COLORS: Record<string, string> = {
+    locus:    '#F0EDE8',
+    agent:    '#C4827A',
+    mirror:   '#7A9E8E',
+    symbiote: '#C4A882',
+    neutral:  '#5A5652',
+  }
+
+  const getRoleColor = (node: any) =>
+    ROLE_COLORS[node.character_role as string] ?? '#8A8480'
 
   // ---------- NORMALIZE TYPE ----------
   const normalizeType = (t: string) => {
@@ -158,7 +174,9 @@ export default function CharacterGraph({ data, stage }: any) {
         height={size.h}
         nodeId="id"
 
-        nodeVal={(node: any) => (node.importance || 0.5) * 8}
+        nodeVal={(node: any) =>
+          ((node.importance || 0.5) * 4) + ((node.agency_score || 0) * 6)
+        }
 
         // ---------- LINKS ----------
         linkColor={(l: any) => TYPE_COLORS[l.type] || "#9ca3af"}
@@ -194,10 +212,7 @@ export default function CharacterGraph({ data, stage }: any) {
           const fontSize = 10 / scale
           ctx.font = `${fontSize}px "DM Mono", monospace`
           ctx.textAlign = 'center'
-
-          const isMain = mainChar && node.id === mainChar.id
-
-          ctx.fillStyle = isMain ? '#F0EDE8' : '#8A8480'
+          ctx.fillStyle = getRoleColor(node)
           ctx.fillText(node.id, node.x, node.y + 8)
         }}
 
@@ -217,6 +232,29 @@ export default function CharacterGraph({ data, stage }: any) {
         <div className="absolute top-4 right-4 w-[240px] bg-cinema-surface border border-cinema-border p-4">
           <div className="font-serif text-sm text-cinema-accent mb-1">{selectedChar.id}</div>
 
+          {selectedChar.character_role && (
+            <div
+              className="font-mono text-[10px] uppercase tracking-[0.15em] mb-2"
+              style={{ color: getRoleColor(selectedChar) }}
+            >
+              {selectedChar.character_role}
+            </div>
+          )}
+
+          {typeof selectedChar.agency_score === 'number' && selectedChar.agency_score > 0 && (
+            <div className="flex justify-between font-mono text-xs text-cinema-muted mb-1">
+              <span>agency</span>
+              <span>{selectedChar.agency_score.toFixed(2)}</span>
+            </div>
+          )}
+
+          {typeof selectedChar.attention_score === 'number' && selectedChar.attention_score > 0 && (
+            <div className="flex justify-between font-mono text-xs text-cinema-muted mb-2">
+              <span>attention</span>
+              <span>{selectedChar.attention_score.toFixed(2)}</span>
+            </div>
+          )}
+
           {selectedChar.description && (
             <div className="font-mono text-xs text-cinema-muted mb-2 leading-relaxed">
               {selectedChar.description}
@@ -230,16 +268,30 @@ export default function CharacterGraph({ data, stage }: any) {
       )}
 
       {/* ---------- LEGEND ---------- */}
-      <div className="absolute bottom-4 left-4 bg-cinema-surface border border-cinema-border px-3 py-2">
-        <div className="font-mono text-xs uppercase tracking-[0.15em] text-cinema-muted mb-2">
-          Legend
-        </div>
-        {Object.entries(TYPE_COLORS).map(([k, v]) => (
-          <div key={k} className="flex items-center gap-2 mb-1">
-            <div style={{ width: 16, height: 2, background: v as string, flexShrink: 0 }} />
-            <span className="font-mono text-xs text-cinema-text">{k}</span>
+      <div className="absolute bottom-4 left-4 flex gap-3">
+        <div className="bg-cinema-surface border border-cinema-border px-3 py-2">
+          <div className="font-mono text-xs uppercase tracking-[0.15em] text-cinema-muted mb-2">
+            Relations
           </div>
-        ))}
+          {Object.entries(TYPE_COLORS).map(([k, v]) => (
+            <div key={k} className="flex items-center gap-2 mb-1">
+              <div style={{ width: 16, height: 2, background: v as string, flexShrink: 0 }} />
+              <span className="font-mono text-xs text-cinema-text">{k}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-cinema-surface border border-cinema-border px-3 py-2">
+          <div className="font-mono text-xs uppercase tracking-[0.15em] text-cinema-muted mb-2">
+            Role
+          </div>
+          {Object.entries(ROLE_COLORS).map(([role, color]) => (
+            <div key={role} className="flex items-center gap-2 mb-1">
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+              <span className="font-mono text-xs" style={{ color }}>{role}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
     </div>

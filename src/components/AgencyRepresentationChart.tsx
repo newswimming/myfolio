@@ -12,10 +12,10 @@ import {
 
 const BEAT_KEYS = ['ki', 'sho', 'ten', 'ketsu'] as const
 const BEAT_LABELS: Record<string, string> = {
-  ki:    'KI',
-  sho:   'SHO',
-  ten:   'TEN',
-  ketsu: 'KETSU'
+  ki:    '起',
+  sho:   '承',
+  ten:   '転',
+  ketsu: '結'
 }
 
 // Desaturated filmic palette — no neons, no primaries
@@ -255,7 +255,7 @@ function ChartSection({
 export default function AgencyRepresentationChart({ agencyByBeat }: { agencyByBeat: AgencyByBeat }) {
   if (!agencyByBeat) return null
 
-  const [activeTab, setActiveTab] = useState<'agency' | 'representation'>('agency')
+  const [activeTab, setActiveTab] = useState<'agency' | 'attention'>('agency')
 
   const allCharacters = useMemo(() => {
     const chars = new Set<string>()

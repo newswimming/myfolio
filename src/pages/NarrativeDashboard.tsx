@@ -46,10 +46,10 @@ export default function NarrativeDashboard({
   const hasGraph = !!analysis?.graphs_by_stage
 
   const LABELS: any = {
-    ki:    { title: 'Ki',    subtitle: 'Setup' },
-    sho:   { title: 'Sho',   subtitle: 'Development' },
-    ten:   { title: 'Ten',   subtitle: 'Turning Point' },
-    ketsu: { title: 'Ketsu', subtitle: 'Resolution' }
+    ki:    { title: '起', subtitle: 'Story' },
+    sho:   { title: '承', subtitle: 'Development' },
+    ten:   { title: '轉', subtitle: 'Twist' },
+    ketsu: { title: '合', subtitle: 'Resolution' }
   }
 
   const agencyByBeat = analysis?.agency_by_beat
